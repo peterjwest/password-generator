@@ -1,0 +1,234 @@
+<!doctype html>
+<html>
+    <title>Password generator</title>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+                font-size: 14px;
+                line-height: 20px;
+            }
+            h1 {
+                font-size: 32px;
+            }
+            h2 {
+                font-size: 26px;
+            }
+            h3 {
+                font-size: 20px;
+            }
+            label {
+                margin-left: 4px;
+            }
+            input {
+                font-size: 14px;
+                padding: 4px 6px;
+                background-color: #ffffff;
+                border: 1px solid #cccccc;
+                box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+            }
+            input.password {
+                flex-grow: 1;
+                font-size: 29px;
+                margin-right: 6px;
+            }
+            .container {
+                max-width: 940px;
+                margin: 0 auto;
+            }
+            .input-wrapper {
+                display: flex;
+                flex-grow: 1;
+                position: relative;
+            }
+            .main-form {
+                display: flex;
+                padding: 20px;
+                background-color: #f5f5f5;
+                border: 1px solid #e3e3e3;
+            }
+            .hidden {
+                display: none;
+            }
+            button {
+                padding: 14px 19px;
+                margin-right: 6px;
+                font-size: 18px;
+                border: 0;
+                cursor: pointer;
+                color: #ffffff;
+            }
+            .generate-button {
+                background-color: #006dcc;
+                background: linear-gradient(to bottom, #0088cc, #0044cc) repeat-x;
+            }
+            .copy-button {
+                position: absolute;
+                top: 7px;
+                right: 6px;
+                padding: 10px 15px;
+                font-size: 14px;
+                background-color: #25b3cc;
+                background: linear-gradient(to bottom, #25b3cc, #0d7fcc) repeat-x;
+            }
+            .generate-button[disabled] {
+                background: #bbb;
+                cursor: default;
+            }
+            .checkbox {
+                padding: 15px 3px;
+                flex-shrink: 0;
+            }
+            .alert-info {
+                padding: 8px 14px;
+                color: #3a87ad;
+                background-color: #d9edf7;
+                border: 1px solid #bce8f1;
+                margin: 10px 0;
+            }
+            .alert-error {
+                padding: 8px 14px;
+                color: #b94a48;
+                background-color: #f2dede;
+                border: 1px solid #eed3d7;
+                margin: 10px 0;
+            }
+        </style>
+        <script src="dictionary.js" integrity="sha384-yu9fm/0vV3u3yhcrbFHkm3KxjjIf4KeljRZ7K0W0Rk9ZERLVWV7OhEL72sEOrc9w"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Password generator</h1>
+            <div class="alert-error unsupported-error hidden">
+                Sorry, <strong>your browser does not support cryptographically secure random numbers</strong>, we won't generate passwords.
+            </div>
+            <form class="main-form" method="post">
+                <div class="input-wrapper">
+                    <input name="password" type="text" class="password"/>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <button class="generate-button">Generate</button>
+                <label class="checkbox"><input type="checkbox" name="avoid-spaces"></input>Avoid spaces?</label>
+            </form>
+            <form method="post">
+                <h2>Dictionary configuration</h2>
+                <label>Min word length <input type="number" name="min-length" min="3" max="10"></label>
+                <label>Max word length <input type="number" name="max-length" max="11" min="4"></label>
+                <label>Min popularity <input type="number" name="min-weight" min="0"></label>
+            </form>
+            <div class="alert-info">
+                Dictionary size:
+                <span class="dictionary-size"></span>,
+                dictionary combinations:
+                <span class="dictionary-combinations"></span>,
+                brute force combinations:
+                <span class="brute-force-combinations"></span>
+            </div>
+        </div>
+
+        <script>
+            var phraseLength = 4;
+            var minWeight = 1000;
+            var minLength = 4;
+            var maxLength = 8;
+
+            var maxRandomValue = Math.pow(2, 16);
+            var dictionaryWords = [];
+
+            function copy(text) {
+                const input = document.createElement('textarea');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+            }
+
+            function query(selector) {
+                return document.querySelector(selector);
+            }
+
+            var generateButton = query('.generate-button');
+            var copyButton = query('.copy-button');
+
+            var mainForm = query('.main-form');
+            var minLengthInput = query('input[name=min-length]');
+            var maxLengthInput = query('input[name=max-length]');
+            var minWeightInput = query('input[name=min-weight]');
+            var passwordInput = query('input[name=password]');
+            var avoidSpacesInput = query('input[name=avoid-spaces]');
+
+            var dictionarySize = query('.dictionary-size');
+            var dictionaryCombinations = query('.dictionary-combinations');
+            var bruteForceCombinations = query('.brute-force-combinations');
+            var unsupportedError = query('.unsupported-error');
+
+            // Whenever dictionary configuration is changed, this updates the dictionary and metadata
+            function updateDictionary(dictionary, minLength, maxLength, minWeight) {
+                minLength = minLengthInput.value;
+                maxLength = maxLengthInput.value;
+                minWeight = minWeightInput.value;
+
+                return dictionary
+                .filter(function(data) { return data[1] >= minWeight; })
+                .filter(function(data) { return data[0].length >= minLength; })
+                .filter(function(data) { return data[0].length <= maxLength; })
+                .map(function(data) { return data[0]; });
+            };
+
+            // Generates a password from a dictionary
+            function generatePassword(dictionaryWords, phraseLength, maxRandomValue, avoidSpaces) {
+                if (!window.crypto || !window.crypto.getRandomValues) {
+                    return unsupportedError.classList.remove('hidden');
+                }
+
+                var passwordWords = [];
+                var randomNumbers = window.crypto.getRandomValues(new Uint16Array(phraseLength));
+
+                for (i = 0; i < phraseLength; i++) {
+                    passwordWords.push(
+                        dictionaryWords[Math.floor(randomNumbers[i] / maxRandomValue * dictionaryWords.length)]
+                    );
+                }
+                var password = passwordWords.join(' ');
+                return avoidSpaces ? password.replace(/ /g, '-') : password;
+            };
+
+            minLengthInput.value = minLength;
+            maxLengthInput.value = maxLength;
+            minWeightInput.value = minWeight;
+
+            function changeDictionarySetting() {
+                dictionaryWords = updateDictionary(dictionary, minLengthInput.value, maxLengthInput.value, minWeightInput.value);
+
+                dictionarySize.textContent = dictionaryWords.length;
+                dictionaryCombinations.textContent = Math.pow(dictionaryWords.length, phraseLength).toExponential(1);
+                bruteForceCombinations.textContent = Math.pow(maxLength * phraseLength, 28).toExponential(1);
+
+                generateButton.disabled = dictionaryWords.length == 0;
+            }
+
+            changeDictionarySetting();
+            minLengthInput.addEventListener('input', changeDictionarySetting);
+            maxLengthInput.addEventListener('input', changeDictionarySetting);
+            minWeightInput.addEventListener('input', changeDictionarySetting);
+
+            passwordInput.value = generatePassword(dictionaryWords, phraseLength, maxRandomValue, avoidSpacesInput.checked);
+            mainForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                passwordInput.value = generatePassword(dictionaryWords, phraseLength, maxRandomValue, avoidSpacesInput.checked);
+            });
+
+            copyButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                copy(passwordInput.value);
+            });
+
+            // Replace spaces/hyphens when checking "Avoid spaces"
+            avoidSpacesInput.addEventListener('input', function() {
+                passwordInput.value = passwordInput.value.replace(/[ -]/g, avoidSpacesInput.checked ? '-' : ' ');
+            });
+        </script>
+    </body>
+</html>
