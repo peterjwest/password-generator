@@ -1,7 +1,7 @@
 <!doctype html>
-<html>
-    <title>Password generator</title>
+<html lang="en">
     <head>
+        <title>Password generator</title>
         <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; object-src 'none'; child-src 'none'; form-action 'none'">
         <style>
             body {
@@ -110,13 +110,13 @@
                     <button class="copy-button">Copy</button>
                 </div>
                 <button class="generate-button">Generate</button>
-                <label class="checkbox"><input type="checkbox" name="avoid-spaces"></input>Avoid spaces?</label>
+                <label class="checkbox"><input type="checkbox" name="avoid-spaces"/>Avoid spaces?</label>
             </form>
             <form method="post">
                 <h2>Dictionary configuration</h2>
-                <label>Min word length <input type="number" name="min-length" min="3" max="10"></label>
-                <label>Max word length <input type="number" name="max-length" max="11" min="4"></label>
-                <label>Min popularity <input type="number" name="min-weight" min="0"></label>
+                <label>Min word length <input type="number" name="min-length" min="3" max="10"/></label>
+                <label>Max word length <input type="number" name="max-length" max="11" min="4"/></label>
+                <label>Min popularity <input type="number" name="min-weight" min="0"/></label>
             </form>
             <div class="alert-info">
                 Dictionary size:
