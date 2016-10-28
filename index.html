@@ -136,7 +136,7 @@
             var maxRandomValue = Math.pow(2, 16);
             var dictionaryWords = [];
 
-            function copy(text) {
+            function copyToClipboard(text) {
                 const input = document.createElement('textarea');
                 input.value = text;
                 document.body.appendChild(input);
@@ -199,6 +199,7 @@
             maxLengthInput.value = maxLength;
             minWeightInput.value = minWeight;
 
+            // Update the dictionary and metadata
             function changeDictionarySetting() {
                 dictionaryWords = updateDictionary(dictionary, minLengthInput.value, maxLengthInput.value, minWeightInput.value);
 
@@ -214,15 +215,17 @@
             maxLengthInput.addEventListener('input', changeDictionarySetting);
             minWeightInput.addEventListener('input', changeDictionarySetting);
 
+            // Generate password initially and on submit
             passwordInput.value = generatePassword(dictionaryWords, phraseLength, maxRandomValue, avoidSpacesInput.checked);
             mainForm.addEventListener('submit', function(event) {
                 event.preventDefault();
                 passwordInput.value = generatePassword(dictionaryWords, phraseLength, maxRandomValue, avoidSpacesInput.checked);
             });
 
+            // Copy password when button is clicked
             copyButton.addEventListener('click', function(event) {
                 event.preventDefault();
-                copy(passwordInput.value);
+                copyToClipboard(passwordInput.value);
             });
 
             // Replace spaces/hyphens when checking "Avoid spaces"
